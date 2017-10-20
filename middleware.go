@@ -1,4 +1,4 @@
-package selfDescribe
+package describer
 
 import (
 	"encoding/json"
@@ -43,6 +43,31 @@ func getStringSliceFromURI(uri string) (v []string) {
 	return
 }
 
+func walkFn(u []string, routes Routes) func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
+	return func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
+		sr := getStringSliceFromURI(strings.Replace(r, "/*/", "/", -1))
+		lr, lu := len(sr), len(u)
+		if lr < lu {
+			// Current node path is shorter than requested URI path,
+			// so it can't possibly be a sub-route.
+			return nil
+		}
+		for i := 0; i < lu; i++ {
+			if u[i] != sr[i] {
+				// Mismatch means "u" is not contained in "r";
+				// we only want to show routes that are at equal or lower
+				// level than the request URI.
+				return nil
+			}
+		}
+		routes = append(routes, RouteInfo{
+			Method: m,
+			Path:   fmt.Sprintf("/%s", strings.Join(sr[lu:], "/")),
+		})
+		return nil
+	}
+}
+
 // Middleware is a middleware that enables automatic routing schema
 // self-description, when making an "OPTIONS" HTTP request to the chi.Router
 // instance that uses this middleware.
@@ -60,7 +85,7 @@ func Middleware(options ...HijackOptions) func(http.Handler) http.Handler {
 	}
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, logEntry := chi.RouteContext(r.Context()), middleware.GetLogEntry(r)
+			ctx, log := chi.RouteContext(r.Context()), middleware.GetLogEntry(r)
 			if ctx == nil || r.Method != "OPTIONS" {
 				// Just proxy to the next handler
 				h.ServeHTTP(w, r)
@@ -69,33 +94,11 @@ func Middleware(options ...HijackOptions) func(http.Handler) http.Handler {
 			// Hijack request
 			var routes Routes
 			u := getStringSliceFromURI(r.RequestURI)
-			chi.Walk(ctx.Routes,
-				func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
-					sr := getStringSliceFromURI(strings.Replace(r, "/*/", "/", -1))
-					lr, lu := len(sr), len(u)
-					if lr < lu {
-						// Current node path is shorter than requested URI path,
-						// so it can't possibly be a sub-route.
-						return nil
-					}
-					for i := 0; i < lu; i++ {
-						if u[i] != sr[i] {
-							// Mismatch means "u" is not contained in "r";
-							// we only want to show routes that are at equal or lower
-							// level than the request URI.
-							return nil
-						}
-					}
-					routes = append(routes, RouteInfo{
-						Method: m,
-						Path:   fmt.Sprintf("/%s", strings.Join(sr[lu:], "/")),
-					})
-					return nil
-				})
+			chi.Walk(ctx.Routes, walkFn(u, routes))
 			raw, err := opt.Render(routes)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				logEntry.Panic(fmt.Sprintf("rendering OPTIONS description failed: %s", err), nil)
+				log.Panic(fmt.Sprintf("rendering OPTIONS description failed: %s", err), nil)
 				return
 			}
 			w.WriteHeader(200)
@@ -115,14 +118,6 @@ type RouteInfo struct {
 // Routes is the list of all API routes detected from the middlware.
 type Routes []RouteInfo
 
-func (r Routes) Len() int {
-	return len(r)
-}
-
-func (r Routes) Less(i int, j int) bool {
-	return strings.Compare(r[i].Path, r[j].Path) == -1
-}
-
-func (r Routes) Swap(i int, j int) {
-	r[i], r[j] = r[j], r[i]
-}
+func (r Routes) Len() int               { return len(r) }
+func (r Routes) Less(i int, j int) bool { return strings.Compare(r[i].Path, r[j].Path) == -1 }
+func (r Routes) Swap(i int, j int)      { r[i], r[j] = r[j], r[i] }

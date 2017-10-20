@@ -1,4 +1,4 @@
-package selfDescribe_test
+package describer_test
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ar3s3ru/selfDescribe"
+	"github.com/ar3s3ru/describer"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,48 +32,48 @@ func TestMiddleware(t *testing.T) {
 
 	tests := []struct {
 		i *http.Request
-		o selfDescribe.Routes
+		o describer.Routes
 	}{
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080/route/test2/inner")},
-			o: selfDescribe.Routes{selfDescribe.RouteInfo{Method: "GET", Path: "/"}},
+			o: describer.Routes{describer.RouteInfo{Method: "GET", Path: "/"}},
 		},
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080/route/test2")},
-			o: selfDescribe.Routes{selfDescribe.RouteInfo{Method: "GET", Path: "/inner"}},
+			o: describer.Routes{describer.RouteInfo{Method: "GET", Path: "/inner"}},
 		},
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080/route/test")},
-			o: selfDescribe.Routes{
-				selfDescribe.RouteInfo{Method: "GET", Path: "/hello/{id}"},
-				selfDescribe.RouteInfo{Method: "POST", Path: "/"},
+			o: describer.Routes{
+				describer.RouteInfo{Method: "GET", Path: "/hello/{id}"},
+				describer.RouteInfo{Method: "POST", Path: "/"},
 			},
 		},
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080/route/test/hello")},
-			o: selfDescribe.Routes{selfDescribe.RouteInfo{Method: "GET", Path: "/{id}"}},
+			o: describer.Routes{describer.RouteInfo{Method: "GET", Path: "/{id}"}},
 		},
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080/route")},
-			o: selfDescribe.Routes{
-				selfDescribe.RouteInfo{Method: "GET", Path: "/get"},
-				selfDescribe.RouteInfo{Method: "POST", Path: "/post"}, selfDescribe.RouteInfo{Method: "PUT", Path: "/put"},
-				selfDescribe.RouteInfo{Method: "PATCH", Path: "/patch"}, selfDescribe.RouteInfo{Method: "DELETE", Path: "/delete"},
-				selfDescribe.RouteInfo{Method: "GET", Path: "/test/hello/{id}"}, selfDescribe.RouteInfo{Method: "POST", Path: "/test/"},
-				selfDescribe.RouteInfo{Method: "GET", Path: "/test2/inner"},
+			o: describer.Routes{
+				describer.RouteInfo{Method: "GET", Path: "/get"},
+				describer.RouteInfo{Method: "POST", Path: "/post"}, describer.RouteInfo{Method: "PUT", Path: "/put"},
+				describer.RouteInfo{Method: "PATCH", Path: "/patch"}, describer.RouteInfo{Method: "DELETE", Path: "/delete"},
+				describer.RouteInfo{Method: "GET", Path: "/test/hello/{id}"}, describer.RouteInfo{Method: "POST", Path: "/test/"},
+				describer.RouteInfo{Method: "GET", Path: "/test2/inner"},
 			},
 		},
 		{
 			i: &http.Request{Method: "OPTIONS", URL: checkURLs(t, "http://localhost:8080")},
-			o: selfDescribe.Routes{
-				selfDescribe.RouteInfo{Method: "GET", Path: "/get"},
-				selfDescribe.RouteInfo{Method: "POST", Path: "/post"}, selfDescribe.RouteInfo{Method: "PUT", Path: "/put"},
-				selfDescribe.RouteInfo{Method: "PATCH", Path: "/patch"}, selfDescribe.RouteInfo{Method: "DELETE", Path: "/delete"},
-				selfDescribe.RouteInfo{Method: "GET", Path: "/route/get"},
-				selfDescribe.RouteInfo{Method: "POST", Path: "/route/post"}, selfDescribe.RouteInfo{Method: "PUT", Path: "/route/put"},
-				selfDescribe.RouteInfo{Method: "PATCH", Path: "/route/patch"}, selfDescribe.RouteInfo{Method: "DELETE", Path: "/route/delete"},
-				selfDescribe.RouteInfo{Method: "GET", Path: "/route/test/hello/{id}"}, selfDescribe.RouteInfo{Method: "POST", Path: "/route/test/"},
-				selfDescribe.RouteInfo{Method: "GET", Path: "/route/test2/inner"},
+			o: describer.Routes{
+				describer.RouteInfo{Method: "GET", Path: "/get"},
+				describer.RouteInfo{Method: "POST", Path: "/post"}, describer.RouteInfo{Method: "PUT", Path: "/put"},
+				describer.RouteInfo{Method: "PATCH", Path: "/patch"}, describer.RouteInfo{Method: "DELETE", Path: "/delete"},
+				describer.RouteInfo{Method: "GET", Path: "/route/get"},
+				describer.RouteInfo{Method: "POST", Path: "/route/post"}, describer.RouteInfo{Method: "PUT", Path: "/route/put"},
+				describer.RouteInfo{Method: "PATCH", Path: "/route/patch"}, describer.RouteInfo{Method: "DELETE", Path: "/route/delete"},
+				describer.RouteInfo{Method: "GET", Path: "/route/test/hello/{id}"}, describer.RouteInfo{Method: "POST", Path: "/route/test/"},
+				describer.RouteInfo{Method: "GET", Path: "/route/test2/inner"},
 			},
 		},
 	}
@@ -86,7 +86,7 @@ func TestMiddleware(t *testing.T) {
 		body, err := ioutil.ReadAll(v.Body)
 		assert.NoError(t, err, "test %d: error while reading response body", i)
 
-		var result selfDescribe.Routes
+		var result describer.Routes
 		assert.NoError(t, json.Unmarshal(body, &result), "test %d: error while unmarshaling results", i)
 		// Sorting both cases to ensure coherence
 		sort.Sort(test.o)
@@ -102,7 +102,7 @@ func runServer(port int) {
 	}
 
 	r := chi.NewRouter()
-	r.Use(selfDescribe.Middleware())
+	r.Use(describer.Middleware())
 
 	r.Get("/get", helloWorld)
 	r.Post("/post", helloWorld)

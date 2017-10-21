@@ -43,7 +43,7 @@ func getStringSliceFromURI(uri string) (v []string) {
 	return
 }
 
-func walkFn(u []string, routes Routes) func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
+func walkFn(u []string, routes *Routes) func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
 	return func(m string, r string, h http.Handler, mw ...func(http.Handler) http.Handler) error {
 		sr := getStringSliceFromURI(strings.Replace(r, "/*/", "/", -1))
 		lr, lu := len(sr), len(u)
@@ -60,7 +60,7 @@ func walkFn(u []string, routes Routes) func(m string, r string, h http.Handler, 
 				return nil
 			}
 		}
-		routes = append(routes, RouteInfo{
+		*routes = append(*routes, RouteInfo{
 			Method: m,
 			Path:   fmt.Sprintf("/%s", strings.Join(sr[lu:], "/")),
 		})
@@ -94,7 +94,7 @@ func Middleware(options ...HijackOptions) func(http.Handler) http.Handler {
 			// Hijack request
 			var routes Routes
 			u := getStringSliceFromURI(r.RequestURI)
-			chi.Walk(ctx.Routes, walkFn(u, routes))
+			chi.Walk(ctx.Routes, walkFn(u, &routes))
 			raw, err := opt.Render(routes)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
